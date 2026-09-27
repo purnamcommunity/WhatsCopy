@@ -98,6 +98,7 @@ assemble_app_bundle() {
 
   cp "$binary_path" "${MACOS_DIR}/${EXECUTABLE_NAME}"
   chmod 755 "${MACOS_DIR}/${EXECUTABLE_NAME}"
+  cp -R "$(dirname "$binary_path")/whatscopy_WhatsCopy.bundle" "${RESOURCES_DIR}/"
   install_logo_resources
   write_info_plist
   printf "APPL????" > "${CONTENTS_DIR}/PkgInfo"
@@ -135,7 +136,8 @@ create_app_icon() {
 
 sign_app_if_configured() {
   if [[ -z "$DEVELOPER_ID_APPLICATION" ]]; then
-    echo "Skipping app signing because DEVELOPER_ID_APPLICATION is not set."
+    echo "Ad-hoc signing ${APP_BUNDLE} because DEVELOPER_ID_APPLICATION is not set."
+    codesign --force --sign - --identifier "$BUNDLE_ID" "$APP_BUNDLE"
     return
   fi
 

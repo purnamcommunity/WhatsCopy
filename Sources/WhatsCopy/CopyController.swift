@@ -38,6 +38,7 @@ public final class CopyController {
         }
 
         guard permissionChecker.isAccessibilityTrusted(prompt: false) else {
+            diagLog("WhatsCopy: Cmd-C seen but Accessibility not trusted")
             return false
         }
 
@@ -48,8 +49,10 @@ public final class CopyController {
         }
 
         guard let selectedText = selectedTextWithRetries(processIdentifier: processIdentifier) else {
+            diagLog("WhatsCopy: Cmd-C in WhatsApp but no selected text found")
             return false
         }
+        diagLog("WhatsCopy: copied \(selectedText.count) characters")
 
         return clipboardWriter.writePlainText(selectedText)
     }

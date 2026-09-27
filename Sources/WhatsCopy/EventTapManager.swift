@@ -28,8 +28,10 @@ public final class EventTapManager {
             callback: EventTapManager.eventTapCallback,
             userInfo: userInfo
         ) else {
+            diagLog("WhatsCopy: event tap creation failed (Accessibility not granted?)")
             return
         }
+        diagLog("WhatsCopy: event tap started")
 
         let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)

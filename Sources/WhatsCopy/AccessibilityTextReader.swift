@@ -17,6 +17,7 @@ public final class AccessibilityTextReader: SelectedTextReading {
             from: applicationElement,
             attribute: kAXFocusedUIElementAttribute
         ) else {
+            diagLog("WhatsCopy: WhatsApp exposes no focused element")
             return nil
         }
 
