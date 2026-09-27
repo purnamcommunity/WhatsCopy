@@ -15,7 +15,7 @@ WhatsCopy is unofficial open-source software. It is not affiliated with WhatsApp
 This is the Purnam Community fork of [danishsshaikh/WhatsCopy](https://github.com/danishsshaikh/WhatsCopy). It differs from upstream in three ways:
 
 - `scripts/package-release.sh` copies the SwiftPM resource bundle (`whatscopy_WhatsCopy.bundle`) into `Contents/Resources`. Without it the packaged app crashes at launch when it loads the menu-bar logo.
-- Without a Developer ID, the script ad-hoc signs the whole app bundle as `dev.whatscopy.WhatsCopy`. An unsigned bundle never gets Accessibility trust, so ⌘C passes through untouched.
+- Without a Developer ID, the script signs the whole app bundle as `dev.whatscopy.WhatsCopy` with the first `Apple Development` identity in the keychain, or ad-hoc when there is none. An unsigned bundle never gets Accessibility trust, so ⌘C passes through untouched.
 - Each ⌘C outcome is written to the macOS unified log (see [Diagnostic Log](#diagnostic-log)).
 
 Pull upstream changes with `git fetch upstream` and review the diff before merging.
@@ -67,7 +67,7 @@ You can also open the package in Xcode and run the `WhatsCopy` executable produc
 
 Open source is useful for transparency and developer builds, but it does not remove macOS Gatekeeper checks for downloaded apps. For normal users, publish a signed and notarized `WhatsCopy.dmg` from GitHub Releases.
 
-Create an ad-hoc signed local package:
+Create a locally signed package:
 
 ```sh
 ./scripts/package-release.sh
@@ -88,7 +88,7 @@ Install it locally:
 rm -rf /Applications/WhatsCopy.app && cp -R dist/WhatsCopy.app /Applications/ && open /Applications/WhatsCopy.app
 ```
 
-The ad-hoc signed DMG is for local use. Users who download it from the internet will see Gatekeeper warnings.
+The locally signed DMG is for local use. Users who download it from the internet will see Gatekeeper warnings.
 
 Create a signed DMG without notarizing:
 
@@ -132,7 +132,7 @@ WhatsCopy needs Accessibility permission because macOS only exposes selected tex
 4. Enable WhatsCopy in System Settings > Privacy & Security > Accessibility.
 5. Quit and relaunch WhatsCopy. The ⌘C listener is only created at launch, so it stays off until the app is relaunched with permission granted.
 
-An ad-hoc signature is tied to the exact build, so every rebuild loses the permission. After installing a new build:
+A build signed with an `Apple Development` identity keeps the permission across rebuilds. An ad-hoc signature is tied to the exact build, so every ad-hoc rebuild loses it. After installing an ad-hoc build, or after switching between the two:
 
 ```sh
 tccutil reset Accessibility dev.whatscopy.WhatsCopy
@@ -154,6 +154,8 @@ Then add `/Applications/WhatsCopy.app` again in Accessibility settings and relau
 
 ## Known Limitations
 
+- WhatsApp for Mac 26.x (Catalyst) does not expose message text or selections through Accessibility. Its window reports about 70 elements (sidebar buttons, headers and the compose box), so WhatsCopy never finds a selection and passes ⌘C through.
+- In WhatsApp 26.x, WhatsApp's own ⌘C copies a highlighted selection unless the cursor is in the compose box. With the cursor there, Edit > Copy is disabled. WhatsApp ignores Accessibility requests to unfocus the compose box, and Esc, Tab and Shift-Tab do not move focus out of it. Click outside the compose box before highlighting.
 - WhatsCopy depends on WhatsApp exposing selected text through macOS Accessibility.
 - If WhatsApp does not expose selected text, WhatsCopy may not be able to copy it.
 - WhatsCopy only handles actively selected text; it does not inspect message databases or chat history.

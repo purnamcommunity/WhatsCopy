@@ -136,8 +136,15 @@ create_app_icon() {
 
 sign_app_if_configured() {
   if [[ -z "$DEVELOPER_ID_APPLICATION" ]]; then
-    echo "Ad-hoc signing ${APP_BUNDLE} because DEVELOPER_ID_APPLICATION is not set."
-    codesign --force --sign - --identifier "$BUNDLE_ID" "$APP_BUNDLE"
+    local identity
+    identity="$(security find-identity -v -p codesigning | awk -F'"' '/Apple Development:/ {print $2; exit}')"
+    if [[ -n "$identity" ]]; then
+      echo "Signing ${APP_BUNDLE} with ${identity} because DEVELOPER_ID_APPLICATION is not set."
+      codesign --force --sign "$identity" --identifier "$BUNDLE_ID" "$APP_BUNDLE"
+    else
+      echo "Ad-hoc signing ${APP_BUNDLE} because no Developer ID or Apple Development identity is available."
+      codesign --force --sign - --identifier "$BUNDLE_ID" "$APP_BUNDLE"
+    fi
     return
   fi
 
