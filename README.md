@@ -10,6 +10,16 @@ WhatsCopy is a small, privacy-first macOS menu-bar utility for cases where Whats
 
 WhatsCopy is unofficial open-source software. It is not affiliated with WhatsApp, Meta, or any related company.
 
+## This Fork
+
+This is the Purnam Community fork of [danishsshaikh/WhatsCopy](https://github.com/danishsshaikh/WhatsCopy). It differs from upstream in three ways:
+
+- `scripts/package-release.sh` copies the SwiftPM resource bundle (`whatscopy_WhatsCopy.bundle`) into `Contents/Resources`. Without it the packaged app crashes at launch when it loads the menu-bar logo.
+- Without a Developer ID, the script ad-hoc signs the whole app bundle as `dev.whatscopy.WhatsCopy`. An unsigned bundle never gets Accessibility trust, so ⌘C passes through untouched.
+- Each ⌘C outcome is written to the macOS unified log (see [Diagnostic Log](#diagnostic-log)).
+
+Pull upstream changes with `git fetch upstream` and review the diff before merging.
+
 ## What It Does
 
 - Runs as a lightweight menu-bar-only macOS app.
@@ -30,6 +40,7 @@ WhatsCopy is intentionally narrow:
 - No message scraping.
 - No reading chat history, files, private app storage, or network traffic.
 - Only selected text is copied when you press Command-C while WhatsApp is frontmost.
+- The diagnostic log records outcomes and character counts only, never message text.
 
 ## Build And Run
 
@@ -56,7 +67,7 @@ You can also open the package in Xcode and run the `WhatsCopy` executable produc
 
 Open source is useful for transparency and developer builds, but it does not remove macOS Gatekeeper checks for downloaded apps. For normal users, publish a signed and notarized `WhatsCopy.dmg` from GitHub Releases.
 
-Create an unsigned local test package:
+Create an ad-hoc signed local package:
 
 ```sh
 ./scripts/package-release.sh
@@ -69,9 +80,15 @@ dist/WhatsCopy.app
 dist/WhatsCopy.dmg
 ```
 
-The packaged app uses `Assets/whatscopy-logo.png` for its app icon and includes the logo in `Contents/Resources`.
+The packaged app uses `Assets/whatscopy-logo.png` for its app icon and includes the logo and the SwiftPM resource bundle in `Contents/Resources`.
 
-The unsigned DMG is useful for local packaging checks, but users may see Gatekeeper warnings if they download it from the internet.
+Install it locally:
+
+```sh
+rm -rf /Applications/WhatsCopy.app && cp -R dist/WhatsCopy.app /Applications/ && open /Applications/WhatsCopy.app
+```
+
+The ad-hoc signed DMG is for local use. Users who download it from the internet will see Gatekeeper warnings.
 
 Create a signed DMG without notarizing:
 
@@ -113,7 +130,15 @@ WhatsCopy needs Accessibility permission because macOS only exposes selected tex
 2. Open the WhatsCopy menu-bar icon.
 3. Choose `Open Accessibility Settings` or `Check Accessibility Permission`.
 4. Enable WhatsCopy in System Settings > Privacy & Security > Accessibility.
-5. Restart WhatsCopy if macOS requires it.
+5. Quit and relaunch WhatsCopy. The ⌘C listener is only created at launch, so it stays off until the app is relaunched with permission granted.
+
+An ad-hoc signature is tied to the exact build, so every rebuild loses the permission. After installing a new build:
+
+```sh
+tccutil reset Accessibility dev.whatscopy.WhatsCopy
+```
+
+Then add `/Applications/WhatsCopy.app` again in Accessibility settings and relaunch WhatsCopy.
 
 ## Manual Test Checklist
 
@@ -136,10 +161,30 @@ WhatsCopy needs Accessibility permission because macOS only exposes selected tex
 
 ## Troubleshooting
 
-- If nothing copies, confirm WhatsCopy has Accessibility permission.
+- If nothing copies, check the [diagnostic log](#diagnostic-log).
+- If nothing copies after a rebuild, reset and re-grant Accessibility permission (see [Accessibility Permission](#accessibility-permission)).
 - If permission was just granted, quit and relaunch WhatsCopy.
 - If copying still fails in WhatsApp, WhatsApp may not be exposing that selected text through Accessibility.
 - If Command-C behaves unexpectedly elsewhere, turn off the `Enabled` menu item or quit WhatsCopy.
+
+## Diagnostic Log
+
+WhatsCopy logs under the subsystem `dev.whatscopy.WhatsCopy`:
+
+```sh
+/usr/bin/log show --last 10m --predicate 'subsystem == "dev.whatscopy.WhatsCopy"' --style compact
+```
+
+Use the full path in zsh, where `log` is a shell builtin.
+
+| Message | Meaning |
+| --- | --- |
+| `event tap started` | Launched with Accessibility permission; ⌘C is being watched. |
+| `event tap creation failed` | Launched without permission. Grant it and relaunch. |
+| `Cmd-C seen but Accessibility not trusted` | Permission was revoked or belongs to an earlier build. |
+| `WhatsApp exposes no focused element` | WhatsApp reported no focused element; ⌘C passes through. |
+| `Cmd-C in WhatsApp but no selected text found` | No selection was readable; ⌘C passes through to WhatsApp. |
+| `copied N characters` | The selection was written to the clipboard. |
 
 ## Contributing
 
